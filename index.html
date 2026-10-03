@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TOPSHOT</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      touch-action: pan-y;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Reels Snap Scrolling */
+    .reels-container {
+      scroll-snap-type: y mandatory;
+    }
+    .reel-item {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-disc {
+      animation: spin-slow 4s linear infinite;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden select-none bg-black">
+
+  <!-- Main App View -->
+  <main id="app-view" class="flex-1 relative overflow-hidden w-full h-full">
+
+    <!-- Screen 1: रील्स फीड स्क्रीन -->
+    <div id="reels-view" class="w-full h-full reels-container overflow-y-scroll hide-scrollbar relative">
+      <!-- रील्स JS द्वारे इथे लोड होतील -->
+    </div>
+
+    <!-- Screen 2: कॅमेरा स्क्रीन -->
+    <div id="camera-view" class="hidden absolute inset-0 w-full h-full bg-black flex flex-col items-center justify-center">
+      <video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover transition-all duration-300"></video>
+      <canvas id="photo-canvas" class="hidden"></canvas>
+
+      <div class="absolute top-4 right-4 flex flex-col gap-4 z-20">
+        <button id="flip-camera-btn" class="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white text-lg active:scale-90 transition">
+          <i class="fas fa-camera-rotate"></i>
+        </button>
+      </div>
+
+      <div class="absolute bottom-4 w-full flex flex-col items-center gap-3 z-20 px-2">
+        <div id="filter-bar" class="flex gap-3 overflow-x-auto w-full px-4 py-2 hide-scrollbar">
+          <button onclick="applyFilter('none')" class="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold text-white whitespace-nowrap border border-white/40">Normal</button>
+          <button onclick="applyFilter('grayscale(100%)')" class="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-semibold text-white whitespace-nowrap border border-white/20">B&W</button>
+          <button onclick="applyFilter('sepia(80%) contrast(110%)')" class="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-semibold text-white whitespace-nowrap border border-white/20">Vintage</button>
+          <button onclick="applyFilter('hue-rotate(90deg) saturate(180%)')" class="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-semibold text-white whitespace-nowrap border border-white/20">Cyberpunk</button>
+          <button onclick="applyFilter('brightness(115%) saturate(140%) contrast(105%)')" class="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-xs font-semibold text-white whitespace-nowrap border border-white/20">Glow</button>
+        </div>
+
+        <div class="flex items-center justify-around w-full max-w-xs pt-1">
+          <label for="gallery-input" class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center cursor-pointer text-white">
+            <i class="far fa-images text-lg"></i>
+            <input type="file" id="gallery-input" accept="image/*,video/*" class="hidden">
+          </label>
+
+          <button id="shutter-btn" class="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center p-1 active:scale-90 transition">
+            <div class="w-full h-full bg-white rounded-full transition-all duration-200" id="shutter-inner"></div>
+          </button>
+
+          <div id="record-timer" class="text-xs font-mono font-bold text-red-500 hidden">00:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: डायरेक्ट मेसेज / चॅट स्क्रीन -->
+    <div id="chat-view" class="hidden absolute inset-0 w-full h-full bg-black flex flex-col z-30">
+      
+      <!-- चॅट लिस्ट व्ह्यू -->
+      <div id="chat-list-container" class="flex-1 flex flex-col h-full">
+        <!-- चॅट हेडर -->
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black">
+          <h2 class="text-xl font-bold bg-gradient-to-r from-pink-500 to-yellow-500 bg-clip-text text-transparent">Messages</h2>
+          <i class="far fa-pen-to-square text-lg text-gray-300"></i>
+        </div>
+
+        <!-- ॲक्टिव्ह फ्रेंड्स (Stories row) -->
+        <div class="flex gap-4 p-4 overflow-x-auto hide-scrollbar border-b border-white/5">
+          <div class="flex flex-col items-center gap-1 min-w-[56px]">
+            <div class="w-14 h-14 rounded-full border-2 border-green-500 p-0.5">
+              <div class="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">NV</div>
+            </div>
+            <span class="text-[11px] text-gray-300 truncate w-14 text-center">Nature</span>
+          </div>
+          <div class="flex flex-col items-center gap-1 min-w-[56px]">
+            <div class="w-14 h-14 rounded-full border-2 border-green-500 p-0.5">
+              <div class="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">TK</div>
+            </div>
+            <span class="text-[11px] text-gray-300 truncate w-14 text-center">Tokyo</span>
+          </div>
+          <div class="flex flex-col items-center gap-1 min-w-[56px]">
+            <div class="w-14 h-14 rounded-full border-2 border-gray-600 p-0.5">
+              <div class="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">DC</div>
+            </div>
+            <span class="text-[11px] text-gray-300 truncate w-14 text-center">Dance</span>
+          </div>
+        </div>
+
+        <!-- चॅट लिस्ट आयटम्स -->
+        <div id="conversations-list" class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-white/5">
+          <!-- JS द्वारे चॅट्स इथे येतील -->
+        </div>
+      </div>
+
+      <!-- इनर वन-टू-वन चॅट बॉक्स (सुरुवातीला लपवलेला) -->
+      <div id="chat-conversation-container" class="hidden absolute inset-0 w-full h-full bg-black flex flex-col z-40">
+        <!-- इनर हेडर -->
+        <div class="flex items-center gap-3 px-3 py-3 border-b border-white/10 bg-black/90 backdrop-blur-md">
+          <button onclick="closeChat()" class="text-white text-lg px-2"><i class="fas fa-chevron-left"></i></button>
+          <div id="active-chat-avatar" class="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-yellow-500 flex items-center justify-center font-bold text-xs text-black">TS</div>
+          <div class="flex-1">
+            <h3 id="active-chat-name" class="font-bold text-sm">User</h3>
+            <span class="text-[10px] text-green-400">Online</span>
+          </div>
+          <i class="fas fa-video text-gray-300 text-sm mr-2"></i>
+        </div>
+
+        <!-- मेसेज एरिया -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 hide-scrollbar">
+          <!-- मेसेजेस लोड होतील -->
+        </div>
+
+        <!-- इनपुट बार -->
+        <div class="p-3 border-t border-white/10 bg-black flex items-center gap-2">
+          <input type="text" id="chat-input" placeholder="Message..." class="flex-1 bg-white/10 text-white rounded-full px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-pink-500">
+          <button onclick="sendMessage()" class="w-9 h-9 bg-gradient-to-r from-pink-500 to-yellow-500 rounded-full flex items-center justify-center text-black font-bold active:scale-90 transition">
+            <i class="fas fa-paper-plane text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="flex justify-around items-center py-2.5 bg-black/90 backdrop-blur-md border-t border-white/10 z-50">
+    <button onclick="switchScreen('reels')" id="nav-reels" class="flex flex-col items-center text-white">
+      <i class="fas fa-film text-xl"></i>
+    </button>
+    <button onclick="switchScreen('camera')" id="nav-camera" class="flex items-center justify-center w-12 h-9 bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 rounded-xl text-black font-bold active:scale-95 transition">
+      <i class="fas fa-plus text-base"></i>
+    </button>
+    <button onclick="switchScreen('chat')" id="nav-chat" class="flex flex-col items-center text-gray-500">
+      <i class="far fa-comment-dots text-xl"></i>
+    </button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
